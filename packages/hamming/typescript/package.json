@@ -1,0 +1,28 @@
+{
+  "name": "@a2ui/hamming",
+  "version": "0.1.0",
+  "description": "A2UI Hamming Protocol — TypeScript wrapper for WASM Hamming client",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  },
+  "peerDependencies": {
+    "a2ui-hamming-wasm": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "a2ui-hamming-wasm": {
+      "optional": true
+    }
+  }
+}
