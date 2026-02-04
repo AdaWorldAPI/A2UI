@@ -1,0 +1,276 @@
+// A2UI Hamming Protocol — gRPC Service Definitions
+// Replaces JSON-based A2UI message exchange with bitpacked Hamming fingerprints.
+// Compatible with ladybug-rs BindSpace and firefly HammingVector.
+
+syntax = "proto3";
+
+package a2ui.hamming;
+
+option java_package = "org.a2ui.hamming";
+option java_outer_classname = "HammingProto";
+
+// Core gRPC service for A2UI Hamming protocol
+service HammingTransport {
+  // Session lifecycle
+  rpc InitSession(InitSessionRequest) returns (InitSessionResponse);
+  rpc CloseSession(CloseSessionRequest) returns (CloseSessionResponse);
+
+  // Bidirectional streaming: server pushes UI frames, client pushes actions
+  rpc StreamFrames(stream HammingFrame) returns (stream HammingFrame);
+
+  // Server-to-client: UI rendering stream
+  rpc RenderStream(RenderStreamRequest) returns (stream HammingFrame);
+
+  // Client-to-server: user action stream
+  rpc ActionStream(stream HammingFrame) returns (stream ActionAck);
+
+  // Codebook management
+  rpc SyncCodebook(CodebookSyncRequest) returns (stream CodebookChunk);
+  rpc GetCodebookVersion(CodebookVersionRequest) returns (CodebookVersionResponse);
+  rpc PushCodebookDelta(CodebookDelta) returns (CodebookDeltaAck);
+}
+
+// Cognitive codebook service (runs on ladybug-rs)
+service CognitiveCodebook {
+  // Query the codebook by semantic similarity
+  rpc SemanticLookup(SemanticQuery) returns (stream CodebookEntry);
+
+  // Request codebook optimization based on usage patterns
+  rpc OptimizeCodebook(OptimizationRequest) returns (OptimizationResult);
+
+  // NARS inference over codebook relationships
+  rpc Infer(InferenceRequest) returns (InferenceResult);
+
+  // Register a new dynamic codebook entry (learned pattern)
+  rpc RegisterDynamic(DynamicEntryRequest) returns (CodebookEntry);
+}
+
+// ─────────────────────────────────────────────────────────
+// Session Messages
+// ─────────────────────────────────────────────────────────
+
+message InitSessionRequest {
+  bytes client_capabilities = 1;    // A2UI client capabilities (serialized)
+  uint32 codebook_version = 2;      // Latest codebook version client has
+  uint32 udp_port = 3;              // UDP port for frame delivery (0 = gRPC only)
+  string auth_token = 4;            // Bearer authentication token
+  repeated string supported_modes = 5;  // "fingerprint", "codebook_ref", "xor_chain", "mixed"
+}
+
+message InitSessionResponse {
+  bytes session_id = 1;             // 8-byte session identifier
+  uint32 codebook_version = 2;      // Server's current codebook version
+  CodebookDelta codebook_delta = 3; // XOR delta to sync client (if versions differ)
+  bytes hmac_key = 4;               // Per-session HMAC key (encrypted with session key)
+  string udp_endpoint = 5;          // Server's UDP endpoint ("host:port" or empty)
+  uint32 max_frame_size = 6;        // Maximum frame size in bytes
+}
+
+message CloseSessionRequest {
+  bytes session_id = 1;
+}
+
+message CloseSessionResponse {
+  bool success = 1;
+  uint64 frames_sent = 2;
+  uint64 frames_received = 3;
+}
+
+// ─────────────────────────────────────────────────────────
+// Frame Messages
+// ─────────────────────────────────────────────────────────
+
+message HammingFrame {
+  // Header
+  bytes session_id = 1;             // 8 bytes
+  uint32 sequence = 2;              // Monotonic sequence number
+  uint32 ack = 3;                   // Last acknowledged sequence
+  uint32 surface_id = 4;            // Target surface (0 = control/broadcast)
+  uint32 codebook_version = 5;      // Sender's codebook version
+  FrameFlags flags = 6;
+
+  // Payload (one of)
+  oneof payload {
+    Fingerprint fingerprint = 10;           // Mode A: single 10kbit fingerprint
+    CodebookRefList codebook_refs = 11;     // Mode B: list of codebook references
+    XorComposition xor_chain = 12;          // Mode C: XOR composition chain
+    MixedPayload mixed = 13;               // Mode D: mixed refs + fragments
+  }
+
+  // Authentication
+  bytes hmac_tag = 20;              // HMAC-SHA256 truncated to 16 bytes
+}
+
+message FrameFlags {
+  PayloadMode mode = 1;
+  bool compressed = 2;              // LZ4 compression applied
+  bool ack_requested = 3;
+  bool more_fragments = 4;
+  bool cognitive = 5;               // Route to NARS/ladybug-rs cognitive layer
+}
+
+enum PayloadMode {
+  FINGERPRINT = 0;                  // Mode A
+  CODEBOOK_REF = 1;                // Mode B
+  XOR_COMPOSITION = 2;             // Mode C
+  MIXED = 3;                       // Mode D
+}
+
+// ─────────────────────────────────────────────────────────
+// Payload Types
+// ─────────────────────────────────────────────────────────
+
+// Mode A: Single 10,000-bit fingerprint (1,250 bytes)
+message Fingerprint {
+  bytes data = 1;                   // 1,250 bytes = 10,000 bits
+}
+
+// Mode B: Sequence of codebook references
+message CodebookRefList {
+  repeated CodebookRef refs = 1;
+}
+
+message CodebookRef {
+  uint32 address = 1;              // 12-bit codebook address (0x000-0xFFF)
+  uint32 modifier = 2;            // 4-bit modifier for property overrides
+  bytes inline_data = 3;          // Optional inline data (e.g., text content, numbers)
+}
+
+// Mode C: XOR composition chain
+message XorComposition {
+  uint32 base_address = 1;         // Starting codebook address
+  repeated uint32 xor_addresses = 2;  // Addresses to XOR with base
+}
+
+// Mode D: Mixed payload
+message MixedPayload {
+  repeated MixedEntry entries = 1;
+}
+
+message MixedEntry {
+  oneof entry {
+    CodebookRef ref = 1;
+    Fingerprint fragment = 2;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Codebook Messages
+// ─────────────────────────────────────────────────────────
+
+message CodebookSyncRequest {
+  uint32 client_version = 1;       // Client's current codebook version
+  bytes session_id = 2;
+  bool full_sync = 3;             // Request full codebook (ignore version)
+}
+
+message CodebookChunk {
+  repeated CodebookEntry entries = 1;
+  uint32 chunk_index = 2;
+  uint32 total_chunks = 3;
+  uint32 version = 4;
+}
+
+message CodebookEntry {
+  uint32 address = 1;              // 12-bit address
+  bytes fingerprint = 2;          // 1,250 bytes (10,000-bit fingerprint)
+  string zone = 3;                // Zone name (protocol, messages, components, etc.)
+  uint32 version = 4;             // Entry version
+  string semantic_label = 5;      // Debug/human-readable label
+  repeated uint32 related = 6;    // Related entry addresses (for cognitive lookup)
+}
+
+message CodebookDelta {
+  uint32 from_version = 1;
+  uint32 to_version = 2;
+  repeated DeltaEntry deltas = 3;
+}
+
+message DeltaEntry {
+  uint32 address = 1;             // Codebook address to update
+  bytes xor_mask = 2;            // XOR delta (1,250 bytes)
+  DeltaOp operation = 3;
+}
+
+enum DeltaOp {
+  MODIFY = 0;                     // XOR existing entry with mask
+  INSERT = 1;                     // New entry (mask IS the fingerprint)
+  DELETE = 2;                     // Remove entry
+}
+
+message CodebookDeltaAck {
+  bool success = 1;
+  uint32 new_version = 2;
+}
+
+message CodebookVersionRequest {
+  bytes session_id = 1;
+}
+
+message CodebookVersionResponse {
+  uint32 version = 1;
+  uint32 entry_count = 2;
+  bytes integrity_hash = 3;       // SHA-256 over all entries
+}
+
+// ─────────────────────────────────────────────────────────
+// Rendering Messages
+// ─────────────────────────────────────────────────────────
+
+message RenderStreamRequest {
+  bytes session_id = 1;
+  repeated uint32 surface_ids = 2;  // Surfaces to subscribe to (empty = all)
+}
+
+message ActionAck {
+  uint32 sequence = 1;
+  bool processed = 2;
+  uint32 error_code = 3;          // 0 = success
+}
+
+// ─────────────────────────────────────────────────────────
+// Cognitive Messages (ladybug-rs integration)
+// ─────────────────────────────────────────────────────────
+
+message SemanticQuery {
+  bytes query_fingerprint = 1;     // 10kbit fingerprint to search for
+  float threshold = 2;            // Minimum similarity (0.0–1.0)
+  uint32 max_results = 3;
+  string zone_filter = 4;         // Restrict to specific zone
+}
+
+message OptimizationRequest {
+  bytes session_id = 1;
+  repeated UsageRecord usage = 2;
+}
+
+message UsageRecord {
+  uint32 address = 1;
+  uint64 count = 2;
+  repeated uint32 co_occurring = 3;  // Addresses that co-occur with this one
+}
+
+message OptimizationResult {
+  repeated CodebookEntry new_composites = 1;  // Suggested composite entries
+  repeated uint32 deprecated = 2;             // Entries to remove
+  float estimated_compression = 3;            // Expected improvement ratio
+}
+
+message InferenceRequest {
+  string narsese = 1;             // NARS statement (e.g., "<A --> B>.")
+  uint32 max_steps = 2;           // Maximum inference steps
+}
+
+message InferenceResult {
+  string conclusion = 1;          // NARS conclusion
+  float confidence = 2;
+  float frequency = 3;
+  repeated string derivation = 4; // Inference chain
+}
+
+message DynamicEntryRequest {
+  bytes fingerprint = 1;          // 10kbit fingerprint for the new entry
+  string semantic_label = 2;
+  string zone = 3;                // Should be "dynamic"
+  repeated uint32 composed_from = 4;  // Source addresses (if XOR composition)
+}
