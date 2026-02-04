@@ -1,0 +1,15 @@
+/* A2UI Hamming — Content script styles.
+ *
+ * Minimal styles injected into the host page. Actual surface styling
+ * is isolated in Shadow DOM (see content-script.ts). This file only
+ * provides the transition for surface injection/removal.
+ */
+
+[data-a2ui-surface] {
+  transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+[data-a2ui-surface].entering {
+  opacity: 0;
+  transform: translateY(8px);
+}

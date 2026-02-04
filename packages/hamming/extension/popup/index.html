@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>A2UI Hamming</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --dim: #808080;
+      --accent: #4a9eff;
+      --error: #ff4a4a;
+      --success: #4aff6e;
+      --font: 'SF Mono', 'Fira Code', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 16px;
+    }
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h1 .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: var(--accent);
+      color: #000;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+    .section {
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--dim);
+      margin-bottom: 6px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .row .label { color: var(--dim); }
+    .row .value { font-weight: 500; }
+    .row .value.connected { color: var(--success); }
+    .row .value.disconnected { color: var(--dim); }
+    .row .value.error { color: var(--error); }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    .btn-row { display: flex; gap: 6px; }
+    button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    A2UI Hamming
+    <span class="badge">PROTO</span>
+  </h1>
+
+  <div class="section">
+    <div class="section-title">Connection</div>
+    <div class="row">
+      <span class="label">Status</span>
+      <span class="value" id="status">disconnected</span>
+    </div>
+    <div class="row">
+      <span class="label">Session</span>
+      <span class="value" id="session">—</span>
+    </div>
+    <div class="row">
+      <span class="label">Uptime</span>
+      <span class="value" id="uptime">—</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Codebook</div>
+    <div class="row">
+      <span class="label">Version</span>
+      <span class="value" id="cb-version">0</span>
+    </div>
+    <div class="row">
+      <span class="label">Entries</span>
+      <span class="value" id="cb-entries">0</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Frames</div>
+    <div class="row">
+      <span class="label">Received</span>
+      <span class="value" id="frames-rx">0</span>
+    </div>
+    <div class="row">
+      <span class="label">Sent</span>
+      <span class="value" id="frames-tx">0</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <input type="text" id="endpoint" placeholder="wss://agent.example.com/hamming" value="ws://localhost:8090/hamming">
+    <div class="btn-row">
+      <button class="btn-primary" id="btn-connect">Connect</button>
+      <button class="btn-secondary" id="btn-panel">Open Panel</button>
+    </div>
+  </div>
+
+  <script type="module" src="../dist/popup/popup.js"></script>
+</body>
+</html>

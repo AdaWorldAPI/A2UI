@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A2UI</title>
+  <style>
+    :root {
+      --a2ui-bg: #0f0f0f;
+      --a2ui-surface: #1a1a1a;
+      --a2ui-border: #2a2a2a;
+      --a2ui-text: #e0e0e0;
+      --a2ui-text-dim: #808080;
+      --a2ui-accent: #4a9eff;
+      --a2ui-error: #ff4a4a;
+      --a2ui-success: #4aff6e;
+      --a2ui-font: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: var(--a2ui-bg);
+      color: var(--a2ui-text);
+      font-family: var(--a2ui-font);
+      font-size: 13px;
+    }
+    #status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--a2ui-surface);
+      border-bottom: 1px solid var(--a2ui-border);
+      font-size: 11px;
+    }
+    #status-bar .indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--a2ui-text-dim);
+      flex-shrink: 0;
+    }
+    #status-bar .indicator.connected { background: var(--a2ui-success); }
+    #status-bar .indicator.connecting { background: var(--a2ui-accent); animation: pulse 1s infinite; }
+    #status-bar .indicator.error { background: var(--a2ui-error); }
+    @keyframes pulse { 50% { opacity: 0.4; } }
+    #status-bar .meta {
+      margin-left: auto;
+      color: var(--a2ui-text-dim);
+    }
+    #connect-form {
+      display: flex;
+      gap: 6px;
+      padding: 12px;
+      border-bottom: 1px solid var(--a2ui-border);
+    }
+    #connect-form input {
+      flex: 1;
+      padding: 6px 10px;
+      background: var(--a2ui-surface);
+      border: 1px solid var(--a2ui-border);
+      border-radius: 4px;
+      color: var(--a2ui-text);
+      font-family: var(--a2ui-font);
+      font-size: 12px;
+    }
+    #connect-form input:focus {
+      outline: none;
+      border-color: var(--a2ui-accent);
+    }
+    #connect-form button {
+      padding: 6px 14px;
+      background: var(--a2ui-accent);
+      border: none;
+      border-radius: 4px;
+      color: #000;
+      font-family: var(--a2ui-font);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #connect-form button:hover { opacity: 0.85; }
+    #connect-form button.disconnect {
+      background: var(--a2ui-border);
+      color: var(--a2ui-text);
+    }
+    #surfaces {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .surface {
+      border: 1px solid var(--a2ui-border);
+      border-radius: 6px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .surface-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--a2ui-surface);
+      font-size: 11px;
+      color: var(--a2ui-text-dim);
+      border-bottom: 1px solid var(--a2ui-border);
+    }
+    .surface-body {
+      padding: 12px;
+    }
+    #log {
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 8px 12px;
+      background: var(--a2ui-surface);
+      border-top: 1px solid var(--a2ui-border);
+      font-size: 11px;
+      color: var(--a2ui-text-dim);
+    }
+    #log .entry { padding: 2px 0; }
+    #log .entry.error { color: var(--a2ui-error); }
+    #log .entry.op { color: var(--a2ui-accent); }
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="status-bar">
+      <div class="indicator" id="status-indicator"></div>
+      <span id="status-text">Disconnected</span>
+      <span class="meta" id="status-meta"></span>
+    </div>
+
+    <form id="connect-form">
+      <input
+        type="text"
+        id="endpoint-input"
+        placeholder="wss://agent.example.com/hamming"
+        value="ws://localhost:8090/hamming"
+      >
+      <button type="submit" id="connect-btn">Connect</button>
+    </form>
+
+    <div id="surfaces">
+      <!-- A2UI surfaces rendered here by Lit components -->
+    </div>
+
+    <div id="log">
+      <div class="entry">A2UI Hamming Client ready</div>
+    </div>
+  </div>
+
+  <script type="module" src="../dist/side-panel/panel.js"></script>
+</body>
+</html>

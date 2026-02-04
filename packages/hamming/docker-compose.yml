@@ -1,0 +1,57 @@
+# A2UI Hamming — Docker Compose for local development (WSL2 / Linux)
+#
+# Usage:
+#   docker compose up --build
+#   docker compose up -d          # detached
+#   docker compose logs -f        # follow logs
+#   docker compose down            # stop
+#
+# The server is available at:
+#   gRPC:  localhost:8090  (Hamming protocol)
+#   HTTP:  localhost:8091  (PWA + extension files + WASM)
+#   UDP:   localhost:8092  (low-latency Hamming frames)
+#
+# The PWA is accessible at:
+#   http://localhost:8091/pwa/
+#
+# Extension files for side-loading:
+#   http://localhost:8091/extension/
+
+services:
+  hamming-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"     # gRPC
+      - "8091:8091"     # HTTP (PWA, WASM, extension assets)
+      - "8092:8092/udp" # UDP Hamming frames
+    environment:
+      - PORT=8090
+      - HTTP_PORT=8091
+      - UDP_PORT=8092
+      - LOG_LEVEL=debug
+    volumes:
+      # Mount codebook for hot-reload during development
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8091/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Redis for firefly packet routing
+  # Uncomment when integrating with firefly GEL execution
+  #
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   command: redis-server --appendonly yes
+
+# volumes:
+#   redis-data:

@@ -1,0 +1,13 @@
+# A2UI Hamming — Railway deployment configuration
+#
+# Railway auto-detects the Dockerfile and sets the PORT env var.
+# The entrypoint script reads PORT for the gRPC server.
+
+[build]
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 5
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

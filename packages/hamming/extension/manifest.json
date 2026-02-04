@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "A2UI Hamming Client",
+  "version": "0.1.0",
+  "description": "Thin client for A2UI agent-to-user interfaces over bitpacked Hamming protocol",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "offscreen",
+    "activeTab",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "ws://*/*",
+    "wss://*/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "dist/background/service-worker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "side-panel/index.html"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "icons/a2ui-16.png",
+      "32": "icons/a2ui-32.png",
+      "48": "icons/a2ui-48.png",
+      "128": "icons/a2ui-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/a2ui-16.png",
+    "32": "icons/a2ui-32.png",
+    "48": "icons/a2ui-48.png",
+    "128": "icons/a2ui-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content/content-script.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "wasm/a2ui_hamming_bg.wasm",
+        "side-panel/index.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "minimum_chrome_version": "116"
+}
