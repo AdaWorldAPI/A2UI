@@ -1,33 +1,33 @@
 /*
- Copyright 2025 Google LLC
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      https://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-import { html, css, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { SurfaceID, Surface as SurfaceState } from "../types/types";
-import { A2uiMessageProcessor } from "../data/model-processor.js";
-import { Root } from "./root.js";
-import { styleMap } from "lit/directives/style-map.js";
+import {html, css, nothing} from 'lit';
+import {customElement, property} from 'lit/decorators.js';
+import * as Types from '@a2ui/web_core/types/types';
+import {A2uiMessageProcessor} from '@a2ui/web_core/data/model-processor';
+import {Root} from './root.js';
+import {styleMap} from 'lit/directives/style-map.js';
 
-@customElement("a2ui-surface")
+@customElement('a2ui-surface')
 export class Surface extends Root {
   @property()
-  accessor surfaceId: SurfaceID | null = null;
+  accessor surfaceId: Types.SurfaceID | null = null;
 
   @property()
-  accessor surface: SurfaceState | null = null;
+  accessor surface: Types.Surface | null = null;
 
   @property()
   accessor processor: A2uiMessageProcessor | null = null;
@@ -68,6 +68,9 @@ export class Surface extends Root {
     </div>`;
   }
 
+  @property()
+  accessor enableCustomElements = false;
+
   #renderSurface() {
     const styles: Record<string, string> = {};
     if (this.surface?.styles) {
@@ -83,31 +86,31 @@ export class Surface extends Root {
           // and half the range for primary color to white the mixed values have
           // to go up double the amount, i.e., a range from black to primary
           // color needs to fit in 0 -> 50 rather than 0 -> 100.
-          case "primaryColor": {
-            styles["--p-100"] = "#ffffff";
-            styles["--p-99"] = `color-mix(in srgb, ${value} 2%, white 98%)`;
-            styles["--p-98"] = `color-mix(in srgb, ${value} 4%, white 96%)`;
-            styles["--p-95"] = `color-mix(in srgb, ${value} 10%, white 90%)`;
-            styles["--p-90"] = `color-mix(in srgb, ${value} 20%, white 80%)`;
-            styles["--p-80"] = `color-mix(in srgb, ${value} 40%, white 60%)`;
-            styles["--p-70"] = `color-mix(in srgb, ${value} 60%, white 40%)`;
-            styles["--p-60"] = `color-mix(in srgb, ${value} 80%, white 20%)`;
-            styles["--p-50"] = value;
-            styles["--p-40"] = `color-mix(in srgb, ${value} 80%, black 20%)`;
-            styles["--p-35"] = `color-mix(in srgb, ${value} 70%, black 30%)`;
-            styles["--p-30"] = `color-mix(in srgb, ${value} 60%, black 40%)`;
-            styles["--p-25"] = `color-mix(in srgb, ${value} 50%, black 50%)`;
-            styles["--p-20"] = `color-mix(in srgb, ${value} 40%, black 60%)`;
-            styles["--p-15"] = `color-mix(in srgb, ${value} 30%, black 70%)`;
-            styles["--p-10"] = `color-mix(in srgb, ${value} 20%, black 80%)`;
-            styles["--p-5"] = `color-mix(in srgb, ${value} 10%, black 90%)`;
-            styles["--0"] = "#00000";
+          case 'primaryColor': {
+            styles['--p-100'] = '#ffffff';
+            styles['--p-99'] = `color-mix(in srgb, ${value} 2%, white 98%)`;
+            styles['--p-98'] = `color-mix(in srgb, ${value} 4%, white 96%)`;
+            styles['--p-95'] = `color-mix(in srgb, ${value} 10%, white 90%)`;
+            styles['--p-90'] = `color-mix(in srgb, ${value} 20%, white 80%)`;
+            styles['--p-80'] = `color-mix(in srgb, ${value} 40%, white 60%)`;
+            styles['--p-70'] = `color-mix(in srgb, ${value} 60%, white 40%)`;
+            styles['--p-60'] = `color-mix(in srgb, ${value} 80%, white 20%)`;
+            styles['--p-50'] = value;
+            styles['--p-40'] = `color-mix(in srgb, ${value} 80%, black 20%)`;
+            styles['--p-35'] = `color-mix(in srgb, ${value} 70%, black 30%)`;
+            styles['--p-30'] = `color-mix(in srgb, ${value} 60%, black 40%)`;
+            styles['--p-25'] = `color-mix(in srgb, ${value} 50%, black 50%)`;
+            styles['--p-20'] = `color-mix(in srgb, ${value} 40%, black 60%)`;
+            styles['--p-15'] = `color-mix(in srgb, ${value} 30%, black 70%)`;
+            styles['--p-10'] = `color-mix(in srgb, ${value} 20%, black 80%)`;
+            styles['--p-5'] = `color-mix(in srgb, ${value} 10%, black 90%)`;
+            styles['--0'] = '#00000';
             break;
           }
 
-          case "font": {
-            styles["--font-family"] = value;
-            styles["--font-family-flex"] = value;
+          case 'font': {
+            styles['--font-family'] = value;
+            styles['--font-family-flex'] = value;
             break;
           }
         }
@@ -118,9 +121,8 @@ export class Surface extends Root {
       style=${styleMap(styles)}
       .surfaceId=${this.surfaceId}
       .processor=${this.processor}
-      .childComponents=${this.surface?.componentTree
-        ? [this.surface.componentTree]
-        : null}
+      .childComponents=${this.surface?.componentTree ? [this.surface.componentTree] : null}
+      .enableCustomElements=${this.enableCustomElements}
     ></a2ui-root>`;
   }
 

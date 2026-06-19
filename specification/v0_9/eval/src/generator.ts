@@ -1,40 +1,40 @@
 /*
- Copyright 2025 Google LLC
-
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
-
-      https://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-import { componentGeneratorFlow } from "./generation_flow";
-import { ModelConfiguration } from "./models";
-import { TestPrompt } from "./prompts";
-import { GeneratedResult } from "./types";
-import { extractJsonFromMarkdown } from "./utils";
-import { rateLimiter } from "./rateLimiter";
-import { logger } from "./logger";
-import * as fs from "fs";
-import * as path from "path";
+import {componentGeneratorFlow} from './generation_flow';
+import {ModelConfiguration} from './models';
+import {TestPrompt} from './prompts';
+import {GeneratedResult} from './types';
+import {extractJsonFromMarkdown} from './utils';
+import {rateLimiter} from './rateLimiter';
+import {logger} from './logger';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class Generator {
   constructor(
     private schemas: any,
     private outputDir?: string,
-    private catalogRules?: string
+    private catalogRules?: string,
   ) {}
 
   async run(
     prompts: TestPrompt[],
     models: ModelConfiguration[],
-    runsPerPrompt: number
+    runsPerPrompt: number,
   ): Promise<GeneratedResult[]> {
     const totalJobs = prompts.length * models.length * runsPerPrompt;
     let completedCount = 0;
@@ -46,14 +46,11 @@ export class Generator {
 
     const progressInterval = setInterval(() => {
       const queuedCount = rateLimiter.waitingCount;
-      const inProgressCount =
-        totalJobs - completedCount - failedCount - queuedCount;
+      const inProgressCount = totalJobs - completedCount - failedCount - queuedCount;
       const pct =
-        totalJobs > 0
-          ? Math.round(((completedCount + failedCount) / totalJobs) * 100)
-          : 0;
+        totalJobs > 0 ? Math.round(((completedCount + failedCount) / totalJobs) * 100) : 0;
       process.stderr.write(
-        `\r[Phase 1] Progress: ${pct}% | Completed: ${completedCount} | In Progress: ${inProgressCount} | Queued: ${queuedCount} | Failed: ${failedCount}          `
+        `\r[Phase 1] Progress: ${pct}% | Completed: ${completedCount} | In Progress: ${inProgressCount} | Queued: ${queuedCount} | Failed: ${failedCount}          `,
       );
     }, 1000);
 
@@ -61,7 +58,7 @@ export class Generator {
       for (const prompt of prompts) {
         for (let i = 1; i <= runsPerPrompt; i++) {
           promises.push(
-            this.runJob(model, prompt, i).then((result) => {
+            this.runJob(model, prompt, i).then(result => {
               if (result.error) {
                 failedCount++;
               } else {
@@ -69,7 +66,7 @@ export class Generator {
               }
               results.push(result);
               return result;
-            })
+            }),
           );
         }
       }
@@ -77,8 +74,8 @@ export class Generator {
 
     await Promise.all(promises);
     clearInterval(progressInterval);
-    process.stderr.write("\n");
-    logger.info("Phase 1: Generation Complete");
+    process.stderr.write('\n');
+    logger.info('Phase 1: Generation Complete');
 
     return results;
   }
@@ -87,7 +84,7 @@ export class Generator {
     model: ModelConfiguration,
     prompt: TestPrompt,
     runIndex: number,
-    retryCount: number = 0
+    retryCount: number = 0,
   ): Promise<GeneratedResult> {
     const startTime = Date.now();
     try {
@@ -116,7 +113,7 @@ export class Generator {
           }
         }
       } else {
-        error = new Error("No output text returned from model");
+        error = new Error('No output text returned from model');
       }
 
       return {
@@ -148,38 +145,32 @@ export class Generator {
     prompt: TestPrompt,
     runIndex: number,
     text: string,
-    components: any[]
+    components: any[],
   ) {
     if (!this.outputDir) return;
-    const modelDir = path.join(
-      this.outputDir,
-      `output-${model.name.replace(/[\/:]/g, "_")}`
-    );
-    const detailsDir = path.join(modelDir, "details");
-    fs.mkdirSync(detailsDir, { recursive: true });
+    const modelDir = path.join(this.outputDir, `output-${model.name.replace(/[\/:]/g, '_')}`);
+    const detailsDir = path.join(modelDir, 'details');
+    fs.mkdirSync(detailsDir, {recursive: true});
 
     fs.writeFileSync(
       path.join(detailsDir, `${prompt.name}.${runIndex}.json`),
-      JSON.stringify(components, null, 2)
+      JSON.stringify(components, null, 2),
     );
 
-    const samplePath = path.join(
-      detailsDir,
-      `${prompt.name}.${runIndex}.sample`
-    );
+    const samplePath = path.join(detailsDir, `${prompt.name}.${runIndex}.sample`);
     const yamlHeader = `---
 description: ${prompt.description}
 name: ${prompt.name}
 prompt: |
 ${prompt.promptText
-  .split("\n")
-  .map((line) => "  " + line)
-  .join("\n")}
+  .split('\n')
+  .map(line => '  ' + line)
+  .join('\n')}
 ---
 `;
-    let jsonlBody = "";
+    let jsonlBody = '';
     for (const comp of components) {
-      jsonlBody += JSON.stringify(comp) + "\n";
+      jsonlBody += JSON.stringify(comp) + '\n';
     }
     fs.writeFileSync(samplePath, yamlHeader + jsonlBody);
   }
@@ -189,23 +180,20 @@ ${prompt.promptText
     prompt: TestPrompt,
     runIndex: number,
     text: string | undefined,
-    error: any
+    error: any,
   ) {
     if (!this.outputDir) return;
-    const modelDir = path.join(
-      this.outputDir,
-      `output-${model.name.replace(/[\/:]/g, "_")}`
-    );
-    const detailsDir = path.join(modelDir, "details");
-    fs.mkdirSync(detailsDir, { recursive: true });
+    const modelDir = path.join(this.outputDir, `output-${model.name.replace(/[\/:]/g, '_')}`);
+    const detailsDir = path.join(modelDir, 'details');
+    fs.mkdirSync(detailsDir, {recursive: true});
 
     fs.writeFileSync(
       path.join(detailsDir, `${prompt.name}.${runIndex}.output.txt`),
-      text || "No output"
+      text || 'No output',
     );
     fs.writeFileSync(
       path.join(detailsDir, `${prompt.name}.${runIndex}.error.json`),
-      JSON.stringify({ message: error.message, stack: error.stack }, null, 2)
+      JSON.stringify({message: error.message, stack: error.stack}, null, 2),
     );
   }
 }
