@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ SKILLS_DIR="$REPO_ROOT/.agents/skills"
 
 mkdir -p "$SKILLS_DIR"
 
-for skill in a2ui-blueprint-maintenance a2ui-blueprint-navigator a2ui-create-feature-blueprint a2ui-implement-feature-from-blueprint; do
+for skill in a2ui-blueprint-compliance a2ui-blueprint-maintenance a2ui-blueprint-navigator a2ui-create-feature-blueprint a2ui-implement-feature-from-blueprint; do
   ln -sfn "../../blueprints/skills/$skill" "$SKILLS_DIR/$skill"
   echo "Symlinked $skill -> .agents/skills/$skill"
 done

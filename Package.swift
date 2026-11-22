@@ -1,7 +1,7 @@
 // swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-// Copyright 2026 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import PackageDescription
 let package = Package(
   name: "A2UISwiftCore",
   platforms: [
-    .iOS(.v16),
-    .macOS(.v13),
+    .iOS(.v17),
+    .macOS(.v14),
   ],
   products: [
     .library(
@@ -32,37 +32,66 @@ let package = Package(
       name: "A2UISwiftUI",
       targets: ["A2UISwiftUI"]
     ),
+    .library(
+      name: "BasicCatalog",
+      targets: ["BasicCatalog"]
+    ),
+    .library(
+      name: "BasicCatalogSwiftUI",
+      targets: ["BasicCatalogSwiftUI"]
+    ),
   ],
   dependencies: [
     .package(
       url: "https://github.com/ajevans99/swift-json-schema",
-      from: "0.13.1"
-    )
+      .upToNextMinor(from: "0.13.1")
+    ),
+    .package(
+      url: "https://github.com/jpsim/Yams",
+      from: "6.2.2"
+    ),
   ],
   targets: [
+    // ── Build Tools & Plugins ──
+    .executableTarget(
+      name: "A2UISchemaGenerator",
+      path: "swift/core/Tools/A2UISchemaGenerator"
+    ),
+    .plugin(
+      name: "A2UISchemaGeneratorPlugin",
+      capability: .buildTool(),
+      dependencies: ["A2UISchemaGenerator"],
+      path: "swift/core/Plugins/A2UISchemaGeneratorPlugin"
+    ),
+
     // ── Core ──
     .target(
       name: "A2UIJSON",
       dependencies: [
         .product(name: "JSONSchema", package: "swift-json-schema"),
-        .product(
-          name: "OrderedJSON",
-          package: "swift-json-schema"
-        ),
+        .product(name: "OrderedJSON", package: "swift-json-schema"),
       ],
-      path: "swift/core/Sources/A2UIJSON"
+      path: "swift/core/Sources/A2UIJSON",
+      plugins: ["A2UISchemaGeneratorPlugin"]
     ),
     .target(
       name: "A2UICore",
       dependencies: [
         "A2UIJSON",
         .product(name: "JSONSchema", package: "swift-json-schema"),
-        .product(
-          name: "OrderedJSON",
-          package: "swift-json-schema"
-        ),
+        .product(name: "OrderedJSON", package: "swift-json-schema"),
       ],
       path: "swift/core/Sources/A2UICore"
+    ),
+    .target(
+      name: "BasicCatalog",
+      dependencies: [
+        "A2UICore",
+        .product(name: "JSONSchema", package: "swift-json-schema"),
+      ],
+      path: "swift/core/Sources/BasicCatalog",
+      resources: [.process("Resources")],
+      plugins: ["A2UISchemaGeneratorPlugin"]
     ),
 
     // ── SwiftUI ──
@@ -71,12 +100,18 @@ let package = Package(
       dependencies: ["A2UICore"],
       path: "swift/swiftui/Sources/A2UISwiftUI"
     ),
-
-    // ── Sample Client ──
-    .executableTarget(
-      name: "A2UISampleClient",
-      dependencies: ["A2UISwiftUI", "A2UICore"],
-      path: "swift/sample/Sources/A2UISampleClient"
+    .target(
+      name: "BasicCatalogSwiftUI",
+      dependencies: [
+        "A2UICore",
+        "A2UISwiftUI",
+        "BasicCatalog",
+        .product(name: "OrderedJSON", package: "swift-json-schema"),
+      ],
+      path: "swift/swiftui/Sources/BasicCatalog",
+      linkerSettings: [
+        .linkedFramework("AVKit")
+      ]
     ),
 
     // ── Tests ──
@@ -92,8 +127,29 @@ let package = Package(
     ),
     .testTarget(
       name: "A2UISwiftUITests",
-      dependencies: ["A2UISwiftUI", "A2UICore"],
+      dependencies: [
+        "A2UISwiftUI",
+        "A2UICore",
+        "BasicCatalog",
+        "BasicCatalogSwiftUI",
+        .product(name: "Yams", package: "Yams"),
+      ],
       path: "swift/swiftui/Tests/A2UISwiftUITests"
+    ),
+    .testTarget(
+      name: "BasicCatalogTests",
+      dependencies: ["BasicCatalog"],
+      path: "swift/core/Tests/BasicCatalogTests"
+    ),
+    .testTarget(
+      name: "A2UIConformanceTests",
+      dependencies: [
+        "A2UICore",
+        "A2UIJSON",
+        "BasicCatalog",
+        .product(name: "Yams", package: "Yams"),
+      ],
+      path: "swift/core/Tests/A2UIConformanceTests"
     ),
   ]
 )

@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,8 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 from agent import ContactAgent
-from a2ui.a2a.extension import try_activate_a2ui_extension
+from a2ui.a2a import try_activate_a2ui_extension
+from a2ui.utils import to_version_number
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +59,12 @@ class ContactAgentExecutor(AgentExecutor):
             f"--- Client requested extensions: {context.requested_extensions} ---"
         )
         active_ui_version = try_activate_a2ui_extension(context, self._agent.agent_card)
-        schema_manager = self._agent.get_schema_manager(active_ui_version)
+        processor = self._agent.get_processor(active_ui_version)
 
         if active_ui_version:
             logger.info(
-                f"--- AGENT_EXECUTOR: A2UI extension is active (v{active_ui_version})."
-                " Using UI runner. ---"
+                "--- AGENT_EXECUTOR: A2UI extension is active"
+                f" (v{to_version_number(active_ui_version)}). Using UI runner. ---"
             )
         else:
             logger.info(
@@ -80,8 +81,8 @@ class ContactAgentExecutor(AgentExecutor):
                 if isinstance(part.root, DataPart):
                     # Extract client UI capabilities from any DataPart that has them
                     if (
-                        schema_manager
-                        and schema_manager.accepts_inline_catalogs
+                        processor
+                        and self._agent.accepts_inline_catalogs
                         and "metadata" in part.root.data
                         and "a2uiClientCapabilities" in part.root.data["metadata"]
                     ):
@@ -160,12 +161,15 @@ class ContactAgentExecutor(AgentExecutor):
             client_ui_capabilities is not None
             and "query" in locals()
             and query
-            and schema_manager
+            and active_ui_version
+            and processor
         ):
-            catalog = schema_manager.get_selected_catalog(
-                client_ui_capabilities=client_ui_capabilities
+            request_processor = self._agent.create_processor(
+                active_ui_version, client_ui_capabilities
             )
-            catalog_schema_str = catalog.render_as_llm_instructions()
+            catalog_schema_str = (
+                request_processor.format.prompt_generator.generate_catalog_instructions()
+            )
             query += (
                 "\n\n[SYSTEM: The client supports the following custom components:"
                 f" {catalog_schema_str}]"

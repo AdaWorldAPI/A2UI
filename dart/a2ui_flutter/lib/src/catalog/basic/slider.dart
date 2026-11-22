@@ -1,0 +1,129 @@
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import 'dart:math' as math;
+
+import 'package:a2ui_core/a2ui_core.dart';
+// ignore: deprecated_member_use, see https://github.com/a2ui-project/a2ui/issues/3235
+import 'package:flutter/material.dart';
+
+import '../../component_implementation.dart';
+import '../../component_props.dart';
+import 'check_hint.dart';
+import 'unbounded_width.dart';
+import 'write_back.dart';
+
+/// Builds the basic `Slider` component: a [Slider] from `min` (default 0) to
+/// `max` (default 100 when absent) under its `label` and current `value`.
+///
+/// With `steps`, the slider moves in that many equal steps from `min`.
+/// Without it, a range that is a whole number from 2 to 1000 moves in steps
+/// of 1, and any other range moves continuously. Each move is written to the
+/// bound `value` path, a whole value below 2^53 in magnitude as an int. A
+/// literal `value`, or a range too large for a double, renders the slider
+/// disabled.
+Widget buildSlider(
+  BuildContext context,
+  ComponentNode<ComponentImplementation> node,
+  ComponentProps props,
+  ChildWidgetBuilder buildChild,
+) {
+  final ThemeData theme = Theme.of(context);
+  final double min = props.number('min') ?? 0;
+  final double max = math.max(min, props.number('max') ?? 100);
+  final double range = max - min;
+  final int? steps = switch (props.number('steps')) {
+    final double n when n.isFinite && n >= 1 && range > 0 && range.isFinite =>
+      n.floor(),
+    _ => null,
+  };
+  final int? divisions =
+      steps ??
+      (range > 1 && range <= 1000 && (range - range.round()).abs() < 1e-9
+          ? range.round()
+          : null);
+  final double raw = props.number('value') ?? min;
+  final double value = raw.isFinite ? raw.clamp(min, max) : min;
+  final String label = props.string('label') ?? '';
+  final String valueText = ComponentProps.asString(value)!;
+  final String? error = props.validationErrors.firstOrNull;
+  final String? hint = checkHint(props);
+  final void Function(Object?)? write = writerFor(context, props, 'value');
+  // A position on the track as the value a move there writes: on its step,
+  // and whole when it can be.
+  num snap(double position) {
+    final double stepped = steps != null
+        ? min + range * ((position - min) / range * steps).round() / steps
+        : divisions != null
+        ? min + (position - min).round()
+        : position;
+    final double snapped = stepped.clamp(min, max);
+    return snapped == snapped.roundToDouble() && snapped.abs() < _twoTo53
+        ? snapped.toInt()
+        : snapped;
+  }
+
+  return limitUnboundedWidth(
+    context,
+    Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // The slider announces both, as its name and its value. Read here as
+        // well, a screen reader would say them twice.
+        ExcludeSemantics(
+          child: Row(
+            children: [
+              Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
+              Text(valueText, style: theme.textTheme.bodySmall),
+            ],
+          ),
+        ),
+        // The label names the node that carries the value and the actions.
+        // Flutter's own `label` is the value bubble, and it would be
+        // announced as the slider's name.
+        MergeSemantics(
+          child: Semantics(
+            label: label,
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: divisions,
+              // Flutter scales each value back from the track, which leaves
+              // 28.999999999999996 where the slider writes 29.
+              semanticFormatterCallback: (v) =>
+                  ComponentProps.asString(snap(v))!,
+              onChanged: write == null || !range.isFinite
+                  ? null
+                  : (moved) => write(snap(moved)),
+            ),
+          ),
+        ),
+        if (error != null)
+          Text(
+            error,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          )
+        else if (hint != null)
+          Text(hint, style: theme.textTheme.bodySmall),
+      ],
+    ),
+  );
+}
+
+/// 2^53, above which a double does not hold every whole number.
+const double _twoTo53 = 9007199254740992;

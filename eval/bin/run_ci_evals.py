@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,23 +18,28 @@
 import argparse
 import datetime
 import glob
-import json
 import os
 import shutil
 import subprocess
 import sys
 
-from report_evals import extract_accuracy, print_results_summary, load_log_data, generate_markdown_summary
+from report_evals import (
+    extract_accuracy,
+    generate_markdown_summary,
+    load_log_data,
+    print_results_summary,
+)
+
 # Automatically override Inspect AI's connection rate-limiter limit to prevent queuing delays in latency measurements
 os.environ["INSPECT_MAX_CONNECTIONS"] = "50"
 
 
 def check_threshold(percentage: float, threshold: float) -> bool:
-    """Compares percentage with threshold.
+    """Compares pass percentage against the required threshold.
 
     Args:
         percentage: The calculated pass percentage.
-        threshold: The threshold to compare against.
+        threshold: The minimum pass percentage threshold.
 
     Returns:
         True if percentage >= threshold, False otherwise.
@@ -43,14 +48,14 @@ def check_threshold(percentage: float, threshold: float) -> bool:
 
 
 def build_main_command(args: argparse.Namespace, seed: str) -> list[str]:
-    """Builds the command line arguments for main.py.
+    """Builds the command line arguments for main.py execution.
 
     Args:
         args: Parsed command line arguments.
-        seed: The random seed to use.
+        seed: Date-based seed for sample shuffling and logging.
 
     Returns:
-        A list of strings representing the command.
+        A list of command line arguments for subprocess execution.
     """
     cmd = [
         "uv",
@@ -68,20 +73,53 @@ def build_main_command(args: argparse.Namespace, seed: str) -> list[str]:
         "--grading-model",
         args.grading_model,
     ]
-    if args.max_samples != 0:
+    if getattr(args, "dataset", None):
+        cmd.extend(["--dataset", args.dataset])
+    if getattr(args, "datasets", None):
+        cmd.extend(["--datasets", args.datasets])
+    if getattr(args, "strategies", None):
+        cmd.extend(["--strategies", args.strategies])
+    if getattr(args, "version", None):
+        cmd.extend(["--version", args.version])
+    if getattr(args, "max_samples", None) and args.max_samples != 0:
         cmd.extend(["--limit", str(args.max_samples)])
+    for flag, attr in (
+        ("--tier", "tier"),
+        ("--tags", "tags"),
+    ):
+        value = getattr(args, attr, None)
+        if value:
+            cmd.extend([flag, str(value)])
+    retries = getattr(args, "max_validation_retries", None)
+    if retries:
+        cmd.extend(["--max-validation-retries", str(retries)])
+    if getattr(args, "no_judge", False):
+        cmd.append("--no-judge")
     return cmd
 
 
-def main():
+def main() -> None:
+    """Main entrypoint for CI evaluation runner."""
     parser = argparse.ArgumentParser(description="Run A2UI evals for CI.")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default=None,
+        help="Evaluate only a specific dataset name",
+    )
+    parser.add_argument(
+        "--datasets",
+        type=str,
+        default=None,
+        help="Comma-separated list of datasets to evaluate",
+    )
     parser.add_argument(
         "--max-samples",
         type=int,
         default=100,
         help=(
-            "Maximum number of samples to evaluate. Set to 0 for all samples. Default"
-            " is 100."
+            "Maximum number of samples to evaluate. Set to 0 for all samples."
+            " Default is 100."
         ),
     )
     parser.add_argument(
@@ -93,18 +131,52 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default="google/gemini-3.5-flash",
-        help="Model used to evaluate tasks. Default is google/gemini-3.5-flash.",
+        default="google/gemini-3.6-flash",
+        help="Model used to evaluate tasks. Default is google/gemini-3.6-flash.",
     )
     parser.add_argument(
         "--grading-model",
         type=str,
-        default="google/gemini-3.5-flash",
-        help="Model used for grading. Default is google/gemini-3.5-flash.",
+        default="google/gemini-3.6-flash",
+        help="Model used for grading. Default is google/gemini-3.6-flash.",
+    )
+    parser.add_argument(
+        "--strategies",
+        type=str,
+        default=None,
+        help="Comma-separated list of evaluation strategies to run.",
+    )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default=None,
+        help="Protocol version to evaluate ('0.9.1', '1.0' or 'auto').",
+    )
+    parser.add_argument(
+        "--tier",
+        type=str,
+        default=None,
+        help="Run only samples tagged with this tier (e.g. 'smoke').",
+    )
+    parser.add_argument(
+        "--tags",
+        type=str,
+        default=None,
+        help="Comma-separated tags a sample must carry to be evaluated.",
+    )
+    parser.add_argument(
+        "--no-judge",
+        action="store_true",
+        help="Skip the LLM judge and gate on Stage 1 and Stage 2 only.",
+    )
+    parser.add_argument(
+        "--max-validation-retries",
+        type=int,
+        default=0,
+        help="Validation self-retries per sample (reports Pass@1 and Pass@K).",
     )
     args = parser.parse_args()
 
-    # Find eval root (directory above bin)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     eval_root = os.path.dirname(script_dir)
 
@@ -124,7 +196,7 @@ def main():
 
     result = subprocess.run(cmd, capture_output=False, text=True)
 
-    log_files = glob.glob(os.path.join(log_dir, "*.eval"))
+    log_files = sorted(glob.glob(os.path.join(log_dir, "*.eval")))
     if not log_files:
         print("Error: No log files generated by main.py.")
         sys.exit(result.returncode if result.returncode != 0 else 1)
@@ -143,9 +215,8 @@ def main():
 
             accuracy = extract_accuracy(log_data)
             percentage = accuracy * 100
-            print(f"Pass percentage: {percentage}%")
+            print(f"Pass percentage: {percentage:.2f}%")
 
-            # Generate and accumulate markdown summary
             try:
                 summary_md = generate_markdown_summary(
                     log_data, percentage, args.threshold
@@ -156,20 +227,16 @@ def main():
 
             if not check_threshold(percentage, args.threshold):
                 print(
-                    f"Error: Pass percentage {percentage}% is less than threshold"
-                    f" {args.threshold}%"
+                    f"Error: Pass percentage {percentage:.2f}% is less than"
+                    f" threshold {args.threshold:.2f}%"
                 )
                 all_passed = False
             else:
                 print("Pass percentage check passed.")
-        except ValueError as e:
-            print(f"Error extracting metrics: {e}")
-            all_passed = False
         except Exception as e:
             print(f"Error processing log file: {e}")
             all_passed = False
 
-    # Write consolidated summary if we have summaries
     if summaries:
         summary_path = os.path.join(eval_root, "eval_summary.md")
         try:
@@ -181,8 +248,8 @@ def main():
 
     if not all_passed:
         print(
-            "\nCI Failed: One or more evaluation strategies did not meet the threshold"
-            " or encountered an error."
+            "\nCI Failed: One or more evaluation strategies did not meet the"
+            " threshold or encountered an error."
         )
         sys.exit(1)
 

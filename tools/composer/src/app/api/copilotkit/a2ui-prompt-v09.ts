@@ -1,11 +1,11 @@
-/**
- * Copyright 2026 Google LLC
+/*
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,12 +24,12 @@ import {join} from 'path';
 
 // Load the actual v0.9 catalog spec and rules
 const catalogSpec = readFileSync(
-  join(process.cwd(), '../../specification/v0_9/catalogs/basic/catalog.json'),
+  join(process.cwd(), '../../catalogs/basic/v0_9/catalog.json'),
   'utf-8',
 );
 
 const catalogRules = readFileSync(
-  join(process.cwd(), '../../specification/v0_9/catalogs/basic/rules.txt'),
+  join(process.cwd(), '../../catalogs/basic/v0_9/rules.txt'),
   'utf-8',
 );
 

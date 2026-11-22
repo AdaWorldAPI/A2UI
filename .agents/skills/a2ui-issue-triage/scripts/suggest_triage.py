@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,13 +24,13 @@ from collections import Counter
 
 # Directory mapping for repo components to run git checks
 COMPONENT_DIRS = {
-    "component: lit renderer": "renderers/lit",
-    "component: angular renderer": "renderers/angular",
-    "component: react renderer": "renderers/react",
+    "component: lit renderer": "typescript/renderers/lit",
+    "component: angular renderer": "typescript/renderers/angular",
+    "component: react renderer": "typescript/renderers/react",
     "component: standard catalog specification": "specification",
     "component: specification": "specification",
     "component: samples": "samples",
-    "component: agent library": "agent_sdks",
+    "component: agent library": "python",
 }
 
 
@@ -141,10 +141,26 @@ def guess_triage_heuristics(title, body):
     # Default suggestions
     priority = "None"
     action = "investigate"
-    labels = []
+    labels = ["status: first-line-handled"]
     reply = ""
 
     text = (title + " " + body).lower()
+
+    # Special Case: Weekly A2UI Compliance Report
+    if "weekly a2ui compliance report" in text:
+        labels.append("type: documentation")
+        priority = "None"
+        action = "close_invalid"
+        reply = (
+            "As agreed, we are closing this report: we need a better workflow to"
+            " make it easier to follow up on the findings."
+        )
+        return {
+            "priority": priority,
+            "action": action,
+            "labels": list(set(labels)),
+            "reply": reply,
+        }
 
     # Guess Component Labels
     if "lit" in text:
@@ -168,8 +184,11 @@ def guess_triage_heuristics(title, body):
         reply = "Thanks. We will update the documentation."
     elif "feature" in text or "enhancement" in text or "request" in text:
         labels.append("type: feature/enhancement")
+        # Whether a request is out of scope takes reading the issue, not
+        # matching keywords, so it is left to the agent that reviews the
+        # suggestion.
         priority = "P3"
-        action = "investigate"
+        action = "backlog"
         reply = "Thanks for the suggestion. We will evaluate this against our roadmap."
     else:
         # Default to bug if not documentation/feature and contains words like error, fail, crash, bug
@@ -185,14 +204,16 @@ def guess_triage_heuristics(title, body):
                 " diagnose this."
             )
 
-    # Guess waiting-for-user-response if repro steps are obviously missing in bug reports
+    # Guess status: waiting-for-author-response if repro steps are obviously missing in bug reports
     if "type: bug" in labels:
         if not any(w in text for w in ["reproduce", "repro", "steps", "run", "how to"]):
-            labels.append("waiting-for-user-response")
+            labels.append("status: waiting-for-author-response")
             action = "needs_info"
             reply = (
-                "Please provide a minimal reproduction schema or code snippet to help"
-                " us investigate."
+                "To help us diagnose this, please provide:\n\n1. Browser console logs"
+                " or exact protocol payload\n2. Minimal reproduction schema or code"
+                " snippet\n\nMarked as `status: waiting-for-author-response` for"
+                " now."
             )
 
     return {
@@ -259,12 +280,26 @@ def main():
         suggestions["suggested_assignees"] = suggested
 
         # If the issue already has an assignee, preserve it!
+        # Rule from docs/contributing/triage/templates.md: Assigned issue without a priority gets P2 and assign_and_fix (unless compliance report)
         existing_assignees = issue.get("assignees", [])
         if existing_assignees:
             suggestions["assignee"] = existing_assignees[0]
             suggestions["assignee_reason"] = (
                 f"Preserving existing assignee: {existing_assignees[0]}."
             )
+            text = (issue.get("title", "") + " " + issue.get("body", "")).lower()
+            if (
+                "weekly a2ui compliance report" not in text
+                and suggestions.get("action") != "needs_info"
+                and suggestions.get("priority") not in ("P0", "P1")
+            ):
+                suggestions["priority"] = "P2"
+                suggestions["action"] = "assign_and_fix"
+                suggestions["reply"] = (
+                    "I assigned a P2 priority to move this out of the triage"
+                    " queue. Please adjust the priority if needed to better"
+                    " reflect the issue's status."
+                )
         else:
             # 3. Add assignee reason
             if suggested:

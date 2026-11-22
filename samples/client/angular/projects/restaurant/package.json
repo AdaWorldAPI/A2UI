@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@a2ui/angular": "workspace:*",
-    "@a2ui/markdown-it": "*",
+    "@a2ui/markdown-it": "workspace:*",
     "@a2ui/web_core": "workspace:*"
   },
   "devDependencies": {
@@ -22,7 +22,7 @@
     "build": {
       "command": "yarn workspace angular-a2ui ng build restaurant",
       "dependencies": [
-        "../../../../../renderers/angular:build"
+        "../../../../../typescript/renderers/angular:build"
       ],
       "files": [
         "src/**/*",

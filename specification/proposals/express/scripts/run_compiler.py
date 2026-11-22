@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,21 +34,20 @@ sys.path.insert(
             "..",
             "..",
             "..",
-            "agent_sdks",
             "python",
             "a2ui_agent",
             "src",
         )
     ),
 )
-import json
-from a2ui.core.catalog import Catalog
-from a2ui.experimental.express.compiler import ExpressCompiler
+from a2ui.core import Catalog
+from a2ui.inference_formats import to_message_dicts
+from a2ui.inference_formats.express import ExpressCompiler
 
 
 def compile_dsl_file(
     dsl_path: str, catalog_path: str, surface_id: str, catalog_id: str
-) -> dict:
+) -> list[dict]:
     """Compiles an A2UI Express DSL file into standard JSON.
 
     Args:
@@ -58,7 +57,7 @@ def compile_dsl_file(
         catalog_id: The optional URI/identifier of the catalog.
 
     Returns:
-        The compiled A2UI v1.0 JSON envelope.
+        The compiled A2UI wire JSON message list.
 
     Raises:
         FileNotFoundError: If the DSL or catalog file does not exist.
@@ -73,9 +72,14 @@ def compile_dsl_file(
 
     with open(catalog_path, "r", encoding="utf-8") as f:
         catalog_dict = json.load(f)
-    catalog = Catalog.from_json(catalog_dict, spec_version="0.9.1")
-    compiler = ExpressCompiler(catalog)
-    return compiler.compile(dsl_text, surface_id=surface_id, catalog_id=catalog_id)
+    catalog = Catalog.from_json(catalog_dict)
+    compiler = ExpressCompiler([catalog])
+    if catalog_id and catalog_id != catalog.catalog_id:
+        raise ValueError(
+            f"Unknown catalog '{catalog_id}'. Available catalogs:"
+            f" {[catalog.catalog_id]}"
+        )
+    return to_message_dicts(compiler.compile(dsl_text, surface_id=surface_id))
 
 
 def main():
@@ -105,9 +109,10 @@ def main():
             "..",
             "..",
             "..",
-            "v1_0",
+            "..",
             "catalogs",
             "basic",
+            "v1",
             "catalog.json",
         ),
         help="Path to the catalog JSON schema (default: basic catalog).",
@@ -116,10 +121,10 @@ def main():
     args = parser.parse_args()
 
     try:
-        compiled_envelope = compile_dsl_file(
+        compiled_messages = compile_dsl_file(
             args.dsl_file, args.catalog, args.surface_id, args.catalog_id
         )
-        print(json.dumps(compiled_envelope, indent=2))
+        print(json.dumps(compiled_messages, indent=2))
         sys.exit(0)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Google LLC
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,14 @@ export class A2UIClient {
     return this.#client;
   }
 
-  async send(message: any | string): Promise<any[]> {
+  /**
+   * Sends a message to the agent.
+   *
+   * @param message The user's text, or a client event.
+   * @param rendererCapabilities The renderer's capabilities, keyed by protocol
+   *   version, which the agent negotiates the request's catalogs from.
+   */
+  async send(message: any | string, rendererCapabilities: Record<string, unknown>): Promise<any[]> {
     const client = await this.#getClient();
     let parts: Part[] = [];
 
@@ -92,6 +99,7 @@ export class A2UIClient {
         role: 'user',
         parts: parts,
         kind: 'message',
+        metadata: {a2uiClientCapabilities: rendererCapabilities},
       },
     });
 

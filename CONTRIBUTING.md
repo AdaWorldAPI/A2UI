@@ -29,9 +29,7 @@ This project follows
 
 File new issues here: https://github.com/a2ui-project/a2ui/issues
 
-The issue triage process is described in the Google-internal document: go/a2ui-triage.
-
-TODO(polina-c): port process description here.
+The issue triage process is described in [docs/contributing/triage/triage.md](docs/contributing/triage/triage.md).
 
 ### Code reviews
 
@@ -92,6 +90,15 @@ Please refer to the following guidelines for detailed information on styles:
 - **License Headers**: required copyright notices.
 
 We expect all contributors to adhere to these styles.
+
+## Skills vs docs
+
+When information in [docs](docs/) and [skills](.agents/skills/) contradicts, docs should be considered as the source of truth and skills should be updated.
+
+## More on contributing
+
+- See more about general contributing in [docs/contributing](docs/contributing).
+- To contribute evaluation use cases and data points to the evaluation suite, see [eval/CONTRIBUTING_USE_CASES.md](eval/CONTRIBUTING_USE_CASES.md).
 
 ## Internal information
 

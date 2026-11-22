@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */ // TODO: remediate legacy any types
 /**
- * Copyright 2026 Google LLC
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import {A2UIViewer as BaseA2UIViewer} from '@a2ui/react';
+import {A2UIViewer as BaseA2UIViewer} from '@a2ui/react/v0_8';
 import {viewerTheme} from './viewerTheme';
 import type {A2UIComponent, SpecVersion} from '@/types/widget';
 

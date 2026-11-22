@@ -1,10 +1,10 @@
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ import logging
 import os
 import shutil
 from agent import RestaurantAgent
-from a2ui.schema.constants import VERSION_0_8
+from a2ui.core.schema import ProtocolVersion
 
 logging.basicConfig(level=logging.INFO)
 
@@ -137,7 +137,7 @@ async def record_query(agent, query, session_id, ui_version):
 
 async def main():
     base_url = "http://localhost:10007"
-    ui_version = VERSION_0_8
+    ui_version = ProtocolVersion.V0_8
     agent = RestaurantAgent(base_url=base_url)
     session_id = "test_session_3"
     image_base_url = f"{base_url}/static/"

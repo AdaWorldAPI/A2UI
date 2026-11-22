@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Google LLC
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,10 +69,12 @@ app.post('/a2a', (req, res) => {
         kind: 'message',
         metadata: {
           a2uiClientCapabilities: {
-            supportedCatalogIds: [
-              'https://a2ui.org/specification/v0_9/standard_catalog_definition.json',
-              MCP_APP_CATALOG_ID,
-            ],
+            'v0.9': {
+              supportedCatalogIds: [
+                'https://a2ui.org/specification/v0_9/standard_catalog_definition.json',
+                MCP_APP_CATALOG_ID,
+              ],
+            },
           },
         },
       },

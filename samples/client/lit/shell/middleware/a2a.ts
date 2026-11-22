@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Google LLC
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,15 @@ import {MessageSendParams, Part, SendMessageSuccessResponse, Task} from '@a2a-js
 import {v4 as uuidv4} from 'uuid';
 
 const A2UI_MIME_TYPE = 'application/a2ui+json';
+
+// The catalogs that the shell's renderer registers, keyed by A2UI protocol
+// version. Every message carries them, so the agent negotiates the catalogs of
+// each request from them.
+const A2UI_CLIENT_CAPABILITIES = {
+  'v0.9': {
+    supportedCatalogIds: ['https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json'],
+  },
+};
 
 const fetchWithCustomHeader: typeof fetch = async (url, init) => {
   const headers = new Headers(init?.headers);
@@ -104,6 +113,7 @@ export const plugin = (): Plugin => {
                 };
               }
 
+              sendParams.message.metadata = {a2uiClientCapabilities: A2UI_CLIENT_CAPABILITIES};
               const client = await createOrGetClient();
               const response = await client.sendMessage(sendParams);
               if ('error' in response) {

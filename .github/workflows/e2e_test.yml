@@ -1,0 +1,116 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: E2E Tests
+
+on:
+  # Lets the tests run on demand, for example on a PR branch, from the Actions
+  # tab or with `gh workflow run e2e_test.yml --ref <branch>`. PRs do not run
+  # them otherwise. A manual run does not file an issue when it fails.
+  workflow_dispatch:
+  schedule:
+    # Staggered from run_evals.yml (00:00 UTC) so the two workflows do not
+    # compete for per-minute quota on the shared REPO_GEMINI_API_KEY.
+    - cron: "30 1 * * *" # daily at 01:30 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  e2e_test:
+    # Do not run on forked branches,
+    # because the test does not have access to secrets in forks.
+    if: github.repository == 'a2ui-project/a2ui'
+    runs-on: ubuntu-latest
+    env:
+      # The one place the model the live tests ask is pinned. The code
+      # defaults to the same model for local runs.
+      A2UI_E2E_MODEL: gemini-3.6-flash
+    permissions:
+      # Lets create_issue.sh find the last passing run.
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - name: Check that REPO_GEMINI_API_KEY is set and available
+        env:
+          # REPO_GEMINI_API_KEY is expected to be set in the repository secrets
+          # See https://docs.github.com/en/actions/security-guides/encrypted-secrets
+          GEMINI_API_KEY: ${{ secrets.REPO_GEMINI_API_KEY }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "ERROR: REPO_GEMINI_API_KEY is not set"
+            exit 1
+          fi
+          echo "GEMINI_API_KEY has ${#GEMINI_API_KEY} characters"
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+      - name: Install Flutter
+        # Before bumping, verify the new version is on the flutter org's
+        # enterprise actions allowlist, or CI will fail with startup_failure.
+        uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e
+        with:
+          channel: beta
+          cache: false
+      - name: Print Flutter version
+        run: flutter --version
+      - name: Cache pub dependencies
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: ${{ runner.os }}-pub-
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Run ./scripts/e2e_test.sh
+        id: e2e
+        # The script exits 0 when every test passed and every recording
+        # renders what its golden does, 3 when the outcome of a recording
+        # drifted from its golden, and 1 for any other failure. The steps
+        # below act on the code, so the step itself may not fail the job.
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.REPO_GEMINI_API_KEY }}
+        run: |
+          code=0
+          ./scripts/e2e_test.sh || code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+      - name: Upload the recordings and the drift report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-recordings
+          path: e2e-recordings/
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: Create Issue if the outcomes drifted on the main branch
+        # Only a scheduled run files an issue, and only for drift. A test
+        # that failed for another reason shows up in the run history, not in
+        # the issue queue. A manual run never files an issue.
+        if: steps.e2e.outputs.exit_code == '3' && github.event_name == 'schedule' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/create_issue.sh "E2E drift" "e2e_drift" e2e-recordings/drift.md
+      - name: Fail the job if the script did not exit 0
+        if: steps.e2e.outputs.exit_code != '0'
+        env:
+          EXIT_CODE: ${{ steps.e2e.outputs.exit_code }}
+        run: |
+          echo "::error::./scripts/e2e_test.sh exited $EXIT_CODE"
+          exit 1

@@ -1,10 +1,10 @@
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,8 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "litellm>=1.83.7",
     "jsonschema>=4.0.0",
+    "a2ui-a2a",
+    "a2ui-adk[a2a]",
     "a2ui-agent-sdk>=0.2.4",
     "uvicorn",
     "starlette",
@@ -46,4 +48,6 @@ build-backend = "hatchling.build"
 packages = ["."]
 
 [tool.uv.sources]
+a2ui-a2a = { workspace = true }
+a2ui-adk = { workspace = true }
 a2ui-agent-sdk = { workspace = true }

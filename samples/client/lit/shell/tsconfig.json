@@ -15,6 +15,7 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "useDefineForClassFields": false,
+    "types": [],
 
     "rootDir": "..",
     "outDir": "dist",
@@ -28,9 +29,10 @@
 
     /* Linting */
     "strict": false,
+    "noImplicitOverride": true,
     "noUnusedLocals": false,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "references": [{"path": "../../../../renderers/lit"}]
+  "references": [{"path": "../../../../typescript/renderers/lit"}]
 }
